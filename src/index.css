@@ -1,0 +1,145 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 来自 design.md 的全局样式 */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* 浅色模式 */
+body {
+  background-color: #FAF8F5;
+  color: #2C2825;
+}
+
+/* 深色模式 */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #1F1B16;
+    color: #F5F0E8;
+  }
+}
+
+/* 自定义滚动条（设置页用） */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* 设置页：time select / slider / checkbox / radio */
+.settings-select {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #FFFFFF;
+  color: #2C2825;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.settings-select:focus {
+  outline: none;
+  border-color: #87A878;
+}
+.settings-select:disabled {
+  cursor: not-allowed;
+}
+@media (prefers-color-scheme: dark) {
+  .settings-select {
+    background: #2A251F;
+    color: #F5F0E8;
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+}
+
+.settings-slider {
+  width: 240px;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 2px;
+  outline: none;
+}
+.settings-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #87A878;
+  cursor: pointer;
+}
+.settings-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #87A878;
+  cursor: pointer;
+  border: none;
+}
+.settings-slider:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.settings-checkbox {
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 150ms, border-color 150ms;
+  padding: 0;
+}
+
+.settings-radio {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.settings-radio-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #87A878;
+}

@@ -1,0 +1,46 @@
+[package]
+name = "mumu"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["沐目"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "mumu_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-opener = "2"
+# T13 开机自启：Windows 写 HKCU\...\Run，macOS 写 LaunchAgent
+tauri-plugin-autostart = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dirs = "5"
+thiserror = "1"
+# 数据库：bundled 表示自带 SQLite 库（无需用户系统预装）
+rusqlite = { version = "0.32", features = ["bundled"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+# T06 屏幕使用统计 tokio 运行时 + 状态机
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "macros"] }
+# T05 Windows API（仅 Windows 编译，避免 Mac/Linux 编译报错）
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_System_Power",
+    "Win32_Graphics_Gdi",
+    "Win32_System_Threading",
+    "Win32_System_StationsAndDesktops",
+    "Win32_System_SystemInformation",
+] }
+

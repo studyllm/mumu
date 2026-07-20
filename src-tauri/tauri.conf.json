@@ -1,0 +1,96 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "沐目",
+  "version": "0.1.0",
+  "identifier": "com.mumu.eye-care",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "沐目",
+        "width": 480,
+        "height": 360,
+        "resizable": false,
+        "center": true,
+        "decorations": false,
+        "visible": false
+      },
+      {
+        "label": "reminder",
+        "url": "reminder.html",
+        "title": "沐目 · 休息一下",
+        "width": 320,
+        "height": 200,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "focus": false,
+        "visible": false,
+        "shadow": false
+      },
+      {
+        "label": "softprompt",
+        "url": "softprompt.html",
+        "title": "沐目 · 护眼提示",
+        "width": 280,
+        "height": 80,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "focus": false,
+        "visible": false,
+        "shadow": false
+      },
+      {
+        "label": "settings",
+        "url": "settings.html",
+        "title": "沐目 · 设置",
+        "width": 800,
+        "height": 600,
+        "minWidth": 600,
+        "minHeight": 400,
+        "resizable": true,
+        "center": true,
+        "visible": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico",
+      "icons/icon.png"
+    ],
+    "publisher": "沐目",
+    "shortDescription": "护眼工具",
+    "longDescription": "沐目是一款为干眼患者打造的轻量护眼工具，遵循 20-20-20 法则，定时提醒休息、滴眼药水、热敷，帮助你养成护眼习惯。",
+    "copyright": "© 2026 沐目",
+    "category": "Utility",
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["SimpChinese", "English"],
+        "startMenuFolder": "沐目",
+        "compression": "lzma",
+        "installerHooks": "installer-hooks.nsh"
+      }
+    }
+  }
+}
