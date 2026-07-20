@@ -40,7 +40,7 @@ git commit -m "沐目 v0.1.0 首发
 ## 步骤 3：推送到 GitHub
 
 ```powershell
-git remote add origin https://github.com/yourname/mumu.git
+git remote add origin https://github.com/studyllm/mumu.git
 git branch -M main
 git push -u origin main
 ```
