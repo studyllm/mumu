@@ -2,9 +2,15 @@
 export default {
   content: [
     "./index.html",
+    "./reminder.html",
+    "./softprompt.html",
+    "./settings.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: 'media',
+  // T31：沐目是浅色护眼工具，不跟随系统深色主题。
+  // 用 'class' 模式但永远不激活 .dark / [data-theme="dark"]，
+  // 任何 dark: 变体都不会被应用。
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {

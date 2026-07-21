@@ -18,18 +18,17 @@ html, body {
   overflow: hidden;
 }
 
-/* 浅色模式 */
+/* T31 修复：沐目是浅色护眼工具，不跟随系统深色主题
+   用户的浅色 class（text-text-primary-light 等）依赖 body 保持浅色背景，
+   一旦系统切到深色，背景变深但文字仍是浅色 → 看不见。
+   强制定位浅色，无论系统设置如何。*/
+html {
+  color-scheme: light;
+}
+
 body {
   background-color: #FAF8F5;
   color: #2C2825;
-}
-
-/* 深色模式 */
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: #1F1B16;
-    color: #F5F0E8;
-  }
 }
 
 /* 自定义滚动条（设置页用） */
@@ -50,14 +49,7 @@ body {
   background: rgba(0, 0, 0, 0.2);
 }
 
-@media (prefers-color-scheme: dark) {
-  ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
-}
+/* T31：移除深色分支 */
 
 /* 设置页：time select / slider / checkbox / radio */
 .settings-select {
@@ -76,13 +68,6 @@ body {
 }
 .settings-select:disabled {
   cursor: not-allowed;
-}
-@media (prefers-color-scheme: dark) {
-  .settings-select {
-    background: #2A251F;
-    color: #F5F0E8;
-    border-color: rgba(255, 255, 255, 0.12);
-  }
 }
 
 .settings-slider {
