@@ -5,8 +5,7 @@
 ![Status](https://img.shields.io/badge/status-v0.1.0%20released-brightgreen)
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Downloads](https://img.shields.io/github/downloads/yourname/mumu/total)
-
+[![Downloads](https://github.com/studyllm/mumu.git)](https://github.com/studyllm/mumu/releases/latest)
 ## 这是什么
 
 我是一名干眼症患者，每天对着电脑 10 小时以上。
@@ -22,7 +21,7 @@
 
 ## 下载
 
-👉 [下载 v0.1.0 安装包](https://github.com/yourname/mumu/releases/latest) — `沐目_0.1.0_x64-setup.exe` (2.85 MB)
+👉 [下载 v0.1.0 安装包](https://github.com/studyllm/mumu/releases/latest) — `沐目_0.1.0_x64-setup.exe` (2.85 MB)
 
 安装步骤：双击安装包 → 选择安装目录 → 完成。卸载：控制面板 → 程序与功能 → 沐目。
 
@@ -59,11 +58,11 @@
 - [x] 性能达标（内存 33MB / CPU 0.26% / 启动 70ms）
 - [x] 视觉规范 2/3 完全对齐（颜色 + 状态切换）
 
-完整任务清单与开发过程见 [`openspec/changes/add-mumu-eye-care/`](openspec/changes/add-mumu-eye-care/)。
+完整任务清单与开发过程见 [`openspec/changes/archive/2026-07-20-add-mumu-eye-care/`](openspec/changes/archive/2026-07-20-add-mumu-eye-care/)。
 
 ## v0.2 backlog（不在本次发布范围）
 
-色温调节、历史趋势周报、macOS 移植、真机锁屏 API、托盘图标渐变动画、倒计时数字平滑过渡。详见 `openspec/changes/add-mumu-eye-care/T19-visual.md` "后续行动"段。
+色温调节、历史趋势周报、macOS 移植、真机锁屏 API、托盘图标渐变动画、倒计时数字平滑过渡。
 
 ## 技术栈
 
