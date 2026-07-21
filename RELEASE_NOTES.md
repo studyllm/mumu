@@ -80,7 +80,7 @@ Get-FileHash "沐目_0.1.0_x64-setup.exe" -Algorithm SHA256
 
 预期 SHA256：
 ```
-b379b3588819763c00c80f65ab69d004a24d10dd1a8e86434f73e32678b312cb
+fb7ec769c389cf10ee48c7e359791e34942dafd1f226f381e5e28e4eae0e650b
 ```
 
 如果哈希不一致，说明下载损坏，请重新下载或检查网络。

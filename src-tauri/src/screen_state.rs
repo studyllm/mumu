@@ -21,11 +21,7 @@
 #[cfg(windows)]
 use std::mem;
 #[cfg(windows)]
-use windows::Win32::Foundation::{HWND, LPARAM, RECT, BOOL};
-#[cfg(windows)]
-use windows::Win32::System::StationsAndDesktops::{
-    GetThreadDesktop, OpenInputDesktop,
-};
+use windows::Win32::Foundation::{HWND, LPARAM, RECT};
 #[cfg(windows)]
 use windows::Win32::Graphics::Gdi::{
     EnumDisplayMonitors, GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST, HDC,
@@ -54,49 +50,81 @@ pub fn is_screen_on() -> bool {
 
 /// 工作站是否被锁定（Win+L 或屏保触发的锁屏）
 ///
-/// T28 修复：旧实现靠"前台窗口为 NULL + idle > 5s"代理锁屏——
-/// 但 Win10/11 锁屏界面本身是个窗口，前台窗口不为 NULL，永远不触发锁屏，
-/// 锁屏后统计仍按 Active 累加。改用官方 API：
+/// T29 修复：T28 用 GetThreadDesktop vs OpenInputDesktop 句柄对比，
+/// 但 Tauri 主进程的 tokio worker thread 可能在不同 desktop session
+/// （后台进程跑在 system session），导致两句柄永远不同，
+/// 锁屏检测一直返回 true → 屏幕使用时长停摆。
 ///
-/// - `GetThreadDesktop(GetCurrentThreadId())` 拿**当前线程**所属 desktop
-/// - `OpenInputDesktop(DF_ALLOWOTHERACCOUNTHOOK, false, DESKTOP_SWITCHDESKTOP)`
-///   拿**当前接输入的** desktop
-/// - 两个句柄不一致 → 锁屏中
+/// **可靠信号组合**（任一满足即视为锁屏）：
+/// 1. 屏幕关闭（`is_screen_on() == false`）——锁屏进入屏保/息屏
+/// 2. 前台窗口**进程名**是锁屏应用（`LockApp.exe` / `LogonUI.exe`）
+///    ——这是最可靠的官方锁屏信号（不受 session 隔离影响）
+/// 3. 长时间 idle + 前台窗口不可见（兜底，覆盖早期 Windows）
 ///
-/// - 任一 API 失败 → 返回 false（保守策略，避免误判锁屏让统计停摆）
-/// - 用 `CloseDesktop` 释放 OpenInputDesktop 句柄（避免句柄泄漏）
+/// **保守降级**：API 失败一律返回 false，避免误判锁屏让统计停摆。
 #[cfg(windows)]
 pub fn is_user_locked() -> bool {
-    use windows::Win32::System::StationsAndDesktops::{
-        CloseDesktop, DF_ALLOWOTHERACCOUNTHOOK, DESKTOP_SWITCHDESKTOP,
-    };
-    use windows::Win32::System::Threading::GetCurrentThreadId;
-    unsafe {
-        // 当前线程所属 desktop（锁屏时被切走）
-        let thread_desktop = match GetThreadDesktop(GetCurrentThreadId()) {
-            Ok(h) => h,
-            Err(_) => return false,
-        };
-
-        // 当前能接输入的 desktop（用户实际所在的 desktop）
-        let input_desktop = match OpenInputDesktop(
-            DF_ALLOWOTHERACCOUNTHOOK,
-            false,
-            DESKTOP_SWITCHDESKTOP,
-        ) {
-            Ok(h) => h,
-            Err(_) => return false,
-        };
-
-        // HDESK 是 *mut c_void 的 newtype，.0 是裸指针。
-        // 比较两指针地址即可判断是否同一 desktop
-        let locked = !std::ptr::eq(thread_desktop.0, input_desktop.0);
-
-        // 释放 OpenInputDesktop 句柄（GetThreadDesktop 不归我们管）
-        let _ = CloseDesktop(input_desktop);
-
-        locked
+    // 信号 1：屏幕关闭
+    if !is_screen_on() {
+        return true;
     }
+
+    unsafe {
+        let hwnd = GetForegroundWindow();
+        if hwnd == HWND(std::ptr::null_mut()) {
+            // 没前台窗口：可能是锁屏也可能是 headless 服务。
+            // 配合 idle 阈值兜底判断（5 秒无输入 + 无窗口 → 锁屏）
+            return idle_milliseconds() > 5_000;
+        }
+
+        // 信号 2：前台窗口进程名是锁屏应用
+        if let Some(proc_name) = foreground_process_name(hwnd) {
+            let lower = proc_name.to_ascii_lowercase();
+            // Win10/11 现代锁屏
+            if lower == "lockapp.exe" {
+                return true;
+            }
+            // Win7 / 部分旧版本锁屏
+            if lower == "logonui.exe" {
+                return true;
+            }
+        }
+
+        // 信号 3：长时间 idle + 窗口不可见（锁屏后某些场景）
+        if !IsWindowVisible(hwnd).as_bool() && idle_milliseconds() > 5_000 {
+            return true;
+        }
+    }
+
+    false
+}
+
+/// 取前台窗口所属进程的可执行文件名（小写），用于锁屏检测
+///
+/// 例：返回 `"explorer.exe"`、`"chrome.exe"`、`"lockapp.exe"` 等
+#[cfg(windows)]
+unsafe fn foreground_process_name(hwnd: HWND) -> Option<String> {
+    use windows::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+
+    let mut pid: u32 = 0;
+    let _ = GetWindowThreadProcessId(hwnd, Some(&mut pid));
+    if pid == 0 {
+        return None;
+    }
+
+    let process_handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+    let mut buf = [0u16; 512];
+    let mut size = buf.len() as u32;
+    let pwstr = windows::core::PWSTR(buf.as_mut_ptr());
+    let ok = QueryFullProcessImageNameW(process_handle, PROCESS_NAME_WIN32, pwstr, &mut size);
+    let _ = windows::Win32::Foundation::CloseHandle(process_handle);
+    ok.ok()?;
+
+    let path = String::from_utf16_lossy(&buf[..size as usize]);
+    // 取路径最后一段（文件名）
+    path.rsplit('\\').next().map(|s| s.to_string())
 }
 
 /// 距上次用户输入的毫秒数（鼠标或键盘）
