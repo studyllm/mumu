@@ -34,7 +34,10 @@ pub enum DbError {
 }
 
 /// 今日统计快照（主界面展示 + 颜色规则判定）
+///
+/// 序列化用 camelCase 与前端 TypeScript 接口对齐（Tauri IPC 默认按字段名匹配）
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct DailyStats {
     pub date: String,
     pub total_seconds: u32,
@@ -442,5 +445,23 @@ mod tests {
         // YYYY-MM-DD 格式，长度 10
         assert_eq!(stats.date.len(), 10);
         assert_eq!(stats.date.chars().filter(|c| *c == '-').count(), 2);
+    }
+
+    /// T25 修复：DailyStats 序列化时字段必须是 camelCase，与前端 TS 接口对齐
+    /// 否则前端拿到 undefined → 数字运算得 NaN → 显示 "NaNm"
+    #[test]
+    fn daily_stats_serializes_as_camel_case() {
+        let stats = DailyStats {
+            date: "2026-07-21".into(),
+            total_seconds: 3660,
+            rest_count: 5,
+            rest_seconds: 150,
+        };
+        let json = serde_json::to_value(&stats).unwrap();
+        assert!(json.get("totalSeconds").is_some(), "missing totalSeconds");
+        assert!(json.get("restCount").is_some(), "missing restCount");
+        assert!(json.get("restSeconds").is_some(), "missing restSeconds");
+        assert!(json.get("total_seconds").is_none(), "snake_case leaked");
+        assert_eq!(json["totalSeconds"], 3660);
     }
 }
