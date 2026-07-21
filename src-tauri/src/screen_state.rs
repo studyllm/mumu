@@ -23,6 +23,10 @@ use std::mem;
 #[cfg(windows)]
 use windows::Win32::Foundation::{HWND, LPARAM, RECT, BOOL};
 #[cfg(windows)]
+use windows::Win32::System::StationsAndDesktops::{
+    GetThreadDesktop, OpenInputDesktop,
+};
+#[cfg(windows)]
 use windows::Win32::Graphics::Gdi::{
     EnumDisplayMonitors, GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST, HDC,
 };
@@ -50,19 +54,48 @@ pub fn is_screen_on() -> bool {
 
 /// 工作站是否被锁定（Win+L 或屏保触发的锁屏）
 ///
-/// MVP 内仅做基础代理信号：
-/// - 前台窗口为空：用户极可能在锁屏界面（LockWorkStation 后所有用户进程的前台窗口被切走）
-/// - 失败时返回 false（保守策略，避免误判）
+/// T28 修复：旧实现靠"前台窗口为 NULL + idle > 5s"代理锁屏——
+/// 但 Win10/11 锁屏界面本身是个窗口，前台窗口不为 NULL，永远不触发锁屏，
+/// 锁屏后统计仍按 Active 累加。改用官方 API：
+///
+/// - `GetThreadDesktop(GetCurrentThreadId())` 拿**当前线程**所属 desktop
+/// - `OpenInputDesktop(DF_ALLOWOTHERACCOUNTHOOK, false, DESKTOP_SWITCHDESKTOP)`
+///   拿**当前接输入的** desktop
+/// - 两个句柄不一致 → 锁屏中
+///
+/// - 任一 API 失败 → 返回 false（保守策略，避免误判锁屏让统计停摆）
+/// - 用 `CloseDesktop` 释放 OpenInputDesktop 句柄（避免句柄泄漏）
 #[cfg(windows)]
 pub fn is_user_locked() -> bool {
+    use windows::Win32::System::StationsAndDesktops::{
+        CloseDesktop, DF_ALLOWOTHERACCOUNTHOOK, DESKTOP_SWITCHDESKTOP,
+    };
+    use windows::Win32::System::Threading::GetCurrentThreadId;
     unsafe {
-        let hwnd = GetForegroundWindow();
-        if hwnd == HWND(std::ptr::null_mut()) {
-            // 没有前台窗口，且 idle 时间超过 5 秒 → 高置信度判定锁屏
-            idle_milliseconds() > 5_000
-        } else {
-            false
-        }
+        // 当前线程所属 desktop（锁屏时被切走）
+        let thread_desktop = match GetThreadDesktop(GetCurrentThreadId()) {
+            Ok(h) => h,
+            Err(_) => return false,
+        };
+
+        // 当前能接输入的 desktop（用户实际所在的 desktop）
+        let input_desktop = match OpenInputDesktop(
+            DF_ALLOWOTHERACCOUNTHOOK,
+            false,
+            DESKTOP_SWITCHDESKTOP,
+        ) {
+            Ok(h) => h,
+            Err(_) => return false,
+        };
+
+        // HDESK 是 *mut c_void 的 newtype，.0 是裸指针。
+        // 比较两指针地址即可判断是否同一 desktop
+        let locked = !std::ptr::eq(thread_desktop.0, input_desktop.0);
+
+        // 释放 OpenInputDesktop 句柄（GetThreadDesktop 不归我们管）
+        let _ = CloseDesktop(input_desktop);
+
+        locked
     }
 }
 
