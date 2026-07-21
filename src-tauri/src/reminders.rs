@@ -559,7 +559,18 @@ impl ReminderScheduler {
         match ev {
             StatisticsEvent::Tick { state: st, .. } => {
                 if st != "Active" {
-                    apply_pause(state, st, now);
+                    // T30 修复：锁屏/关屏时如果当前有 active 强提醒弹窗，
+                    // 必须主动 dismiss 它（不算休息也不响声音），不能只设 hidden。
+                    // 否则前端的 setInterval 仍在跑，归零时会 invoke reminder_complete
+                    // 并播木鱼声，但用户其实已经离开电脑了。
+                    if state.active_strong.is_some() {
+                        let cmds = apply_dismiss_strong(state, now);
+                        for cmd in cmds {
+                            let _ = self.reminder_tx.send(cmd).await;
+                        }
+                    } else {
+                        apply_pause(state, st, now);
+                    }
                     let _ = self.reminder_tx.send(ReminderCommand::HideAllPopups).await;
                 } else if let Some(until) = state.pause_until {
                     if until <= now {
@@ -568,7 +579,15 @@ impl ReminderScheduler {
                 }
             }
             StatisticsEvent::Paused => {
-                apply_pause(state, "user_paused", now);
+                // 手动暂停：同样的 dismiss 逻辑
+                if state.active_strong.is_some() {
+                    let cmds = apply_dismiss_strong(state, now);
+                    for cmd in cmds {
+                        let _ = self.reminder_tx.send(cmd).await;
+                    }
+                } else {
+                    apply_pause(state, "user_paused", now);
+                }
                 let _ = self.reminder_tx.send(ReminderCommand::HideAllPopups).await;
             }
             StatisticsEvent::Resumed => {
