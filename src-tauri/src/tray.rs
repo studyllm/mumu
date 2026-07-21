@@ -8,13 +8,12 @@
 //   - `tray-eye-closed.png` ：弧线      —— 休息 / 锁屏 / 灭屏
 //   - 状态切换由 `set_eye_state(open: bool)` 触发（T19 补的视觉规范）
 // - 菜单项（右键）：
-//    1. 显示当日数据  —— emit "open-main" 事件给前端
-//    2. 主界面        —— 同上
-//    3. 暂停 30 分钟  —— 调 settings + reminders::apply_manual_pause
-//    4. 暂停 1 小时   —— 同上
-//    5. 暂停到明早 9 点 —— 同上
-//    6. 设置          —— emit "open-settings"
-//    7. 退出          —— app.exit(0)
+//    1. 打开主界面    —— show_main
+//    2. 暂停 30 分钟  —— 调 settings + reminders::apply_manual_pause
+//    3. 暂停 1 小时   —— 同上
+//    4. 暂停到明早 9 点 —— 同上
+//    5. 设置          —— open_settings
+//    6. 退出          —— app.exit(0)
 // - 左键：Tauri 默认不弹菜单（任务要求"空操作，保持后台"）
 // - 双击：emit "open-main"（任务要求）
 //
@@ -33,7 +32,6 @@ use tauri::{
 pub mod id {
     pub const OPEN_MAIN: &str = "open-main";
     pub const OPEN_SETTINGS: &str = "open-settings";
-    pub const SHOW_TODAY: &str = "show-today";
     pub const PAUSE_30: &str = "pause-30";
     pub const PAUSE_60: &str = "pause-60";
     pub const PAUSE_TILL_TOMORROW: &str = "pause-till-tomorrow";
@@ -83,13 +81,6 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         app,
         id::OPEN_MAIN,
         "打开主界面",
-        true,
-        None::<&str>,
-    )?)?;
-    menu.append(&MenuItem::with_id(
-        app,
-        id::SHOW_TODAY,
-        "显示当日数据",
         true,
         None::<&str>,
     )?)?;
@@ -153,14 +144,13 @@ pub fn install_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
 fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, menu_id: &str) {
     match menu_id {
         id::OPEN_MAIN => show_main(app),
-        id::SHOW_TODAY => show_main(app), // MVP：同样打开主界面；T09 主界面就是当日数据
         id::PAUSE_30 => apply_pause(app, 30),
         id::PAUSE_60 => apply_pause(app, 60),
         id::PAUSE_TILL_TOMORROW => apply_pause_tomorrow(app),
         id::OPEN_SETTINGS => open_settings(app),
         id::QUIT => app.exit(0),
         _ => {
-            eprintln!("[mumu tray] unknown menu id '{}' (did you mean one of: open-main, show-today, pause-30, pause-60, pause-till-tomorrow, open-settings, quit?)", menu_id);
+            eprintln!("[mumu tray] unknown menu id '{}' (did you mean one of: open-main, pause-30, pause-60, pause-till-tomorrow, open-settings, quit?)", menu_id);
         }
     }
 }
