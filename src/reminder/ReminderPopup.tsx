@@ -35,6 +35,9 @@ export function ReminderPopup() {
   const [playSound, setPlaySound] = useState<boolean>(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const enteredAtRef = useRef<number>(0)
+  // T27 修复：playSound 用 ref 镜像，避免 useEffect mount 一次后
+  // setInterval 闭包永远捕获 mount 时的 false → 倒计时归零不响木鱼声
+  const playSoundRef = useRef<boolean>(false)
 
   const stopInterval = () => {
     if (intervalRef.current) {
@@ -66,7 +69,8 @@ export function ReminderPopup() {
         if (prev <= 1) {
           stopInterval()
           // 归零：先播声音（若启用），再通知后端 + 退场
-          if (playSound) {
+          // T27 修复：从 ref 读最新 playSound，而非 setInterval 创建时的 closure
+          if (playSoundRef.current) {
             playWoodenFish().catch((e) =>
               console.error("audio play failed", e)
             )
@@ -103,6 +107,8 @@ export function ReminderPopup() {
         (e) => {
           const { duration_seconds, play_sound } = e.payload
           setPlaySound(play_sound)
+          // T27：ref 同步，避免 setInterval 闭包捕获 stale false
+          playSoundRef.current = play_sound
           enter()
           startCountdown(duration_seconds)
         }
