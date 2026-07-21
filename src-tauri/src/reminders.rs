@@ -157,6 +157,11 @@ pub fn should_trigger_strong(
         if active.hidden {
             return StrongDecision::ResumeActive(active.clone());
         }
+        // T26 修复：active_strong 存在但没隐藏（即倒计时进行中）→ 不重复触发。
+        // 旧逻辑会走到间隔判定，而 last_strong_at 只在 skip/complete 时才被 set，
+        // 导致倒计时期间每 5 秒一次 tick 都会再 emit ShowStrongReminder，
+        // 前端倒计时卡在 16→20→16→20。
+        return StrongDecision::NotTrigger;
     }
 
     // 工作时段
@@ -807,6 +812,27 @@ mod tests {
         let now = at(2026, 7, 19, 10, 10);
         let d = should_trigger_strong(&state, &st, now);
         assert!(matches!(d, StrongDecision::ResumeActive(_)));
+    }
+
+    /// T26 修复：active_strong 存在但 hidden=false（倒计时进行中）→ NotTrigger。
+    /// 否则每 5 秒一次 tick 都会重新 emit → 前端倒计时卡在 16→20 循环
+    /// （last_strong_at 只在 skip/complete 时才 set，倒计时期间一直是 None/老值）
+    #[test]
+    fn strong_not_retriggered_while_countdown_running() {
+        let st = default_settings();
+        let mut state = ReminderState::default();
+        state.active_strong = Some(ActiveStrong {
+            started_at: at(2026, 7, 19, 10, 0),
+            duration_seconds: 20,
+            remaining_seconds: 15,
+            mute_sound: false,
+            hidden: false, // 倒计时中
+        });
+        let now = at(2026, 7, 19, 10, 5); // 5 秒后
+        assert_eq!(
+            should_trigger_strong(&state, &st, now),
+            StrongDecision::NotTrigger
+        );
     }
 
     #[test]
