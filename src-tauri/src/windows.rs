@@ -37,8 +37,8 @@ const EDGE_OFFSET_PX: i32 = 24;
 /// 窗口尺寸（与 tauri.conf.json 一致）
 const REMINDER_W: i32 = 320;
 const REMINDER_H: i32 = 200;
-const SOFTPROMPT_W: i32 = 280;
-const SOFTPROMPT_H: i32 = 80;
+const SOFTPROMPT_W: i32 = 320;
+const SOFTPROMPT_H: i32 = 200;
 
 /// 显示强提醒弹窗
 pub fn show_reminder_popup<R: Runtime>(app: &AppHandle<R>, payload: ShowStrongReminderPayload) {
