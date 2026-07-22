@@ -1,15 +1,15 @@
 /**
- * 弱提示弹窗（T10.5）
+ * 弱提示弹窗（T10.5 / T33）
  *
  * 规格：openspec/changes/add-mumu-eye-care/specs/ui/spec.md § Soft prompt
  *
  * 视觉与动画：
  * - 280×80 半透明 + 20px backdrop blur + 12px 圆角
- * - 单行消息（无倒计时）
+ * - 单行消息 + 倒计时（T33 加）
  * - 入场 300ms fade-in ease-out；退场 500ms fade-out ease-in
  *
  * 行为：
- * - 收到 show-soft-prompt → 入场 + 启动 10s 自动消失定时器
+ * - 收到 show-soft-prompt → 入场 + 启动 10s 倒计时（每秒 -1），归零自动 dismiss
  * - 点击任意位置 → 立即 dismiss（推回后端 + 退场）
  * - 收到 hide-soft-prompt → 立即退场
  * - 不抢焦点（依赖窗口 focus:false）
@@ -23,6 +23,7 @@ import {
   SHOW_SOFT_PROMPT_EVENT,
   type ShowSoftPromptPayload,
 } from "./types"
+import { playWoodenFish, preloadWoodenFish } from "../reminder/audio"
 
 type Phase = "hidden" | "entering" | "shown" | "exiting"
 
@@ -32,13 +33,20 @@ export function SoftPrompt() {
   const [phase, setPhase] = useState<Phase>("hidden")
   const [message, setMessage] = useState<string>("")
   const [kind, setKind] = useState<"eye_drop" | "warm_compress" | null>(null)
+  // T33：倒计时显示给用户（之前只有 10s 自动消失，没有可视化倒计时）
+  const [secondsLeft, setSecondsLeft] = useState<number>(10)
   const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const tickIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const dismissCommittedRef = useRef(false)
 
-  const clearAuto = () => {
+  const clearTimers = () => {
     if (autoTimerRef.current) {
       clearTimeout(autoTimerRef.current)
       autoTimerRef.current = null
+    }
+    if (tickIntervalRef.current) {
+      clearInterval(tickIntervalRef.current)
+      tickIntervalRef.current = null
     }
   }
 
@@ -48,6 +56,7 @@ export function SoftPrompt() {
       setPhase("hidden")
       setMessage("")
       setKind(null)
+      setSecondsLeft(10)
       dismissCommittedRef.current = false
     }, 500)
   }
@@ -55,7 +64,7 @@ export function SoftPrompt() {
   const commitDismiss = () => {
     if (dismissCommittedRef.current) return
     dismissCommittedRef.current = true
-    clearAuto()
+    clearTimers()
     if (kind) {
       invoke("softprompt_dismiss", { kind })
         .catch((e) => console.error("softprompt_dismiss failed", e))
@@ -66,12 +75,19 @@ export function SoftPrompt() {
   const enter = (msg: string, k: "eye_drop" | "warm_compress") => {
     setMessage(msg)
     setKind(k)
+    setSecondsLeft(10)
     setPhase("entering")
     requestAnimationFrame(() => {
       requestAnimationFrame(() => setPhase("shown"))
     })
-    clearAuto()
+    clearTimers()
+    // T33：每秒 -1 显示给用户
+    tickIntervalRef.current = setInterval(() => {
+      setSecondsLeft((prev) => (prev > 1 ? prev - 1 : prev))
+    }, 1000)
     autoTimerRef.current = setTimeout(() => {
+      // T33：倒计时归零也播木鱼声（与强提醒归零一致体验）
+      playWoodenFish().catch((e) => console.error("audio play failed", e))
       commitDismiss()
     }, AUTO_DISMISS_MS)
   }
@@ -80,6 +96,9 @@ export function SoftPrompt() {
   useEffect(() => {
     const unlistens: UnlistenFn[] = []
     let cancelled = false
+
+    // T33：与 reminder 共用同一个音频；提前 preload + 解锁 AudioContext
+    preloadWoodenFish()
 
     ;(async () => {
       const u1 = await listen<ShowSoftPromptPayload>(
@@ -107,7 +126,7 @@ export function SoftPrompt() {
 
     return () => {
       cancelled = true
-      clearAuto()
+      clearTimers()
       unlistens.forEach((u) => u())
     }
   }, [])
@@ -115,7 +134,7 @@ export function SoftPrompt() {
   if (phase === "hidden") return null
 
   return (
-    <div className="w-screen h-screen pointer-events-none select-none">
+    <div className="w-screen h-screen flex items-center justify-center pointer-events-none select-none">
       <button
         onClick={commitDismiss}
         aria-label="关闭提示"
@@ -133,6 +152,9 @@ export function SoftPrompt() {
             {kind === "warm_compress" ? "♨" : "💧"}
           </span>
           <span className="softprompt-msg">{message}</span>
+          <span className="softprompt-countdown" aria-label={`${secondsLeft} 秒后自动关闭`}>
+            {secondsLeft}
+          </span>
         </div>
       </button>
 
@@ -151,24 +173,34 @@ export function SoftPrompt() {
           text-align: left;
           font-family: inherit;
           color: inherit;
-          position: fixed;
-          inset: 0;
-          margin: auto;
         }
         .softprompt-inner { width: 100%; }
         .softprompt-icon {
           font-size: 22px;
           line-height: 1;
+          flex-shrink: 0;
         }
         .softprompt-msg {
           font-size: 14px;
           color: #2C2825;
           font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
           letter-spacing: 0.02em;
+          flex: 1;
+        }
+        /* T33：倒计时数字——右下小号，与消息保持视觉层级 */
+        .softprompt-countdown {
+          font-size: 18px;
+          font-weight: 600;
+          color: #87A878;
+          font-variant-numeric: tabular-nums;
+          flex-shrink: 0;
+          min-width: 20px;
+          text-align: right;
         }
         @media (prefers-color-scheme: dark) {
           .softprompt-card { background: rgba(31, 27, 22, 0.85); }
           .softprompt-msg { color: #F5F0E8; }
+          .softprompt-countdown { color: #A8C29B; }
         }
       `}</style>
     </div>
