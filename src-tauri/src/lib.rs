@@ -31,6 +31,7 @@ use tray::install_tray;
 use db::{DbState, DailyStats};
 use commands::{
     reminder_skip, reminder_complete, softprompt_dismiss, trigger_test_reminder,
+    trigger_test_soft_prompt,
     SchedulerControlHandle, sync_autostart,
 };
 
@@ -94,6 +95,7 @@ pub fn run() {
             reminder_complete,
             softprompt_dismiss,
             trigger_test_reminder,
+            trigger_test_soft_prompt,
         ])
         .setup(move |app| {
             // T08: 安装系统托盘

@@ -444,6 +444,9 @@ pub enum SchedulerControl {
     DismissSoft(SoftPromptKind),
     /// T11 设置页点"测试提醒"——立即触发 5 秒强提醒
     TestTrigger,
+    /// T32 设置页点"护眼提醒"——立即弹一次弱提示（眼药水 / 热敷）
+    /// 不计入正常调度节拍，不影响下次自然触发
+    TestSoft(SoftPromptKind),
 }
 
 #[allow(dead_code)]
@@ -548,6 +551,18 @@ impl ReminderScheduler {
                         duration_seconds: active.duration_seconds,
                         mute_sound: active.mute_sound,
                         play_sound: true, // T11 测试按钮：始终播放声音
+                    })
+                    .await;
+            }
+            SchedulerControl::TestSoft(kind) => {
+                // T32：设置页点"护眼提醒"——立刻弹一次弱提示。
+                // 不写 dismiss 队列（自然节拍不受影响），也不依赖对应 enabled 开关
+                // （用户没启用"眼药水提醒"也可能想看一眼提示长什么样）。
+                let _ = self
+                    .reminder_tx
+                    .send(ReminderCommand::ShowSoftPrompt {
+                        kind,
+                        message: kind.default_message().to_string(),
                     })
                     .await;
             }

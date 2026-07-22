@@ -12,7 +12,7 @@
  *
  * 实时生效：每次变更 → invoke('write_settings_cmd') + 通知 scheduler
  * 工作时段校验：end <= start → 拒绝保存 + UI 红色提示
- * Test Reminder 按钮：触发 5 秒迷你强提醒
+ * Test 按钮：触发 5 秒迷你强提醒（休息）+ 即时弹弱提示（护眼，眼药水/热敷可切）
  */
 
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -155,6 +155,17 @@ export function SettingsWindow() {
       console.error("trigger_test_reminder failed", e)
     }
   }, [])
+
+  // T32：拆分后的"护眼提醒"按钮——按当前 kind 选择触发对应弱提示
+  const [testCareKind, setTestCareKind] =
+    useState<"eye_drop" | "warm_compress">("eye_drop")
+  const handleTestCareReminder = useCallback(async () => {
+    try {
+      await invoke("trigger_test_soft_prompt", { kind: testCareKind })
+    } catch (e) {
+      console.error("trigger_test_soft_prompt failed", e)
+    }
+  }, [testCareKind])
 
   if (!loaded) {
     return (
@@ -301,14 +312,34 @@ export function SettingsWindow() {
           </Row>
         </Section>
 
-        {/* 测试按钮 */}
-        <div className="mt-10 flex justify-center">
+        {/* T32 拆分后的两个测试按钮：休息提醒（强提醒）+ 护眼提醒（弱提示） */}
+        <div className="mt-10 flex flex-col items-center gap-3">
           <button
             onClick={handleTestReminder}
             className="test-reminder-btn"
           >
-            测试提醒
+            休息提醒
           </button>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleTestCareReminder}
+              className="test-reminder-btn"
+            >
+              护眼提醒
+            </button>
+            <select
+              value={testCareKind}
+              onChange={(e) =>
+                setTestCareKind(e.target.value as "eye_drop" | "warm_compress")
+              }
+              className="settings-select"
+              aria-label="选择护眼提醒类型"
+            >
+              <option value="eye_drop">眼药水</option>
+              <option value="warm_compress">热敷</option>
+            </select>
+          </div>
         </div>
 
         <div className="mt-8 flex justify-center">

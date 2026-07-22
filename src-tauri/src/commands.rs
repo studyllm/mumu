@@ -106,3 +106,18 @@ pub async fn trigger_test_reminder(
     Ok(())
 }
 
+/// T32：设置页"护眼提醒"按钮——立即弹一次指定 kind 的弱提示
+/// kind 由前端传入（eye_drop / warm_compress）
+#[tauri::command]
+pub async fn trigger_test_soft_prompt(
+    handle: tauri::State<'_, SchedulerControlHandle>,
+    kind: SoftPromptKind,
+) -> Result<(), String> {
+    handle
+        .0
+        .send(SchedulerControl::TestSoft(kind))
+        .await
+        .map_err(|e| format!("scheduler 通道已关闭: {e}"))?;
+    Ok(())
+}
+
