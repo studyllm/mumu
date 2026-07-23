@@ -27,6 +27,8 @@ use tauri::{
     tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, Runtime,
 };
+use crate::commands::SchedulerControlHandle;
+use crate::reminders::SchedulerControl;
 
 /// 菜单项 ID（与浏览器 / 前端 invoke 时一致）
 pub mod id {
@@ -35,6 +37,7 @@ pub mod id {
     pub const PAUSE_30: &str = "pause-30";
     pub const PAUSE_60: &str = "pause-60";
     pub const PAUSE_TILL_TOMORROW: &str = "pause-till-tomorrow";
+    pub const RESUME: &str = "resume";
     pub const QUIT: &str = "quit";
 }
 
@@ -211,15 +214,20 @@ fn open_settings<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-/// 标记手动暂停 X 分钟——通知 reminders 模块
-///
-/// MVP 内 reminders 没起来时，仅打印日志；
-/// 留 hook 给后续 T15 真机集成时接通 State<ReminderState> Apply
-fn apply_pause<R: Runtime>(_app: &AppHandle<R>, _minutes: u32) {
-    // 提示日志：T08 只装托盘，后续 T15/T11 接通 reminders
-    // println!("[mumu tray] pause {} min", minutes);
+/// 标记手动暂停 X 分钟——通过 SchedulerControl 推回 reminders 调度器
+fn apply_pause<R: Runtime>(app: &AppHandle<R>, minutes: u32) {
+    let state: tauri::State<SchedulerControlHandle> = app.state();
+    // 阻塞 send：channel buffer=8 不会满（只有用户主动触发）
+    let tx = state.0.clone();
+    tauri::async_runtime::block_on(async move {
+        let _ = tx.send(SchedulerControl::PauseMinutes(minutes)).await;
+    });
 }
 
-fn apply_pause_tomorrow<R: Runtime>(_app: &AppHandle<R>) {
-    // 留 hook
+fn apply_pause_tomorrow<R: Runtime>(app: &AppHandle<R>) {
+    let state: tauri::State<SchedulerControlHandle> = app.state();
+    let tx = state.0.clone();
+    tauri::async_runtime::block_on(async move {
+        let _ = tx.send(SchedulerControl::PauseUntilTomorrow).await;
+    });
 }

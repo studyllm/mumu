@@ -31,7 +31,7 @@ use tray::install_tray;
 use db::{DbState, DailyStats};
 use commands::{
     reminder_skip, reminder_complete, softprompt_dismiss, trigger_test_reminder,
-    trigger_test_soft_prompt,
+    trigger_test_soft_prompt, get_reminder_status_cmd, resume_reminders_cmd,
     SchedulerControlHandle, sync_autostart,
 };
 
@@ -96,6 +96,8 @@ pub fn run() {
             softprompt_dismiss,
             trigger_test_reminder,
             trigger_test_soft_prompt,
+            get_reminder_status_cmd,
+            resume_reminders_cmd,
         ])
         .setup(move |app| {
             // T08: 安装系统托盘
@@ -116,6 +118,10 @@ pub fn run() {
             let (reminder_tx, mut reminder_rx) = tokio::sync::mpsc::channel(32);
             let (control_tx, control_rx) = tokio::sync::mpsc::channel(8);
 
+            // T36：scheduler state 提到外部 Arc<Mutex>，让 get_reminder_status_cmd 也能读
+            let reminder_state = Arc::new(tokio::sync::Mutex::new(reminders::ReminderState::default()));
+            app.manage(Arc::clone(&reminder_state));
+
             // 1) T06 屏幕使用统计
             tauri::async_runtime::spawn(statistics::StatisticsLoop::new(
                 Arc::clone(&db),
@@ -129,7 +135,7 @@ pub fn run() {
                 stats_rx,
                 reminder_tx,
                 control_rx,
-            ).run());
+            ).run(Arc::clone(&reminder_state)));
 
             // 3) ReminderCommand → 前端事件总线
             let app_handle_for_translate = app.handle().clone();

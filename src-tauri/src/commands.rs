@@ -11,12 +11,14 @@
 // （调度器持有 ReminderState 单一可变源，避免锁竞争）。
 // 同时立即下发 hide 事件到前端（不等调度器节拍）。
 
+use std::sync::Arc;
+
 use tauri::AppHandle;
 use tauri_plugin_autostart::ManagerExt;
 use tokio::sync::mpsc;
 
-use crate::reminders::{SchedulerControl, SoftPromptKind};
-use crate::settings::Settings;
+use crate::reminders::{ReminderSnapshot, SchedulerControl, SoftPromptKind, compute_snapshot};
+use crate::settings::{Settings, SettingsHandle};
 use crate::windows::{hide_reminder_popup, hide_soft_prompt};
 
 /// scheduler 控制 channel 的 Sender（注入 Tauri State）
@@ -118,6 +120,34 @@ pub async fn trigger_test_soft_prompt(
         .send(SchedulerControl::TestSoft(kind))
         .await
         .map_err(|e| format!("scheduler 通道已关闭: {e}"))?;
+    Ok(())
+}
+
+/// T36：主界面"上次提醒 / 下次倒计时"快照
+///
+/// 读共享 ReminderState + 当前 settings，compute_snapshot 出 ReminderSnapshot
+/// 给前端展示。1Hz 轮询，零持久化（重启后合理丢失）。
+#[tauri::command]
+pub async fn get_reminder_status_cmd(
+    state: tauri::State<'_, Arc<tokio::sync::Mutex<crate::reminders::ReminderState>>>,
+    settings: tauri::State<'_, SettingsHandle>,
+) -> Result<ReminderSnapshot, String> {
+    let state_guard = state.lock().await;
+    let settings_snapshot = settings.snapshot().await;
+    let snapshot = compute_snapshot(&state_guard, &settings_snapshot, chrono::Local::now());
+    Ok(snapshot)
+}
+
+/// T36+：主界面"继续提醒"按钮——清除手动暂停
+///
+/// 直接操作共享 ReminderState（不走 scheduler control channel，
+/// 避免 scheduler 主循环 tick 延迟导致 UI 反应慢）。
+#[tauri::command]
+pub async fn resume_reminders_cmd(
+    state: tauri::State<'_, Arc<tokio::sync::Mutex<crate::reminders::ReminderState>>>,
+) -> Result<(), String> {
+    let mut state_guard = state.lock().await;
+    crate::reminders::apply_resume(&mut state_guard);
     Ok(())
 }
 

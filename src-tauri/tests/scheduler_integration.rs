@@ -14,7 +14,7 @@ use std::time::Duration;
 
 use mumu_lib::db::DbState;
 use mumu_lib::reminders::{
-    ReminderCommand, ReminderScheduler, SchedulerControl, SoftPromptKind,
+    ReminderCommand, ReminderScheduler, ReminderState, SchedulerControl, SoftPromptKind,
 };
 use mumu_lib::settings::Settings;
 use mumu_lib::statistics::StatisticsEvent;
@@ -71,7 +71,8 @@ async fn test_trigger_emits_show_strong_reminder() {
         reminder_tx,
         control_rx,
     );
-    tokio::spawn(scheduler.run());
+    let state = Arc::new(tokio::sync::Mutex::new(ReminderState::default()));
+    tokio::spawn(scheduler.run(Arc::clone(&state)));
 
     // 喂一个 Active tick 让 scheduler 知道屏幕亮着
     stats_tx
@@ -122,7 +123,8 @@ async fn skip_then_complete_flow_writes_db() {
         reminder_tx,
         control_rx,
     );
-    tokio::spawn(scheduler.run());
+    let state = Arc::new(tokio::sync::Mutex::new(ReminderState::default()));
+    tokio::spawn(scheduler.run(Arc::clone(&state)));
 
     stats_tx
         .send(StatisticsEvent::Tick {
@@ -190,7 +192,8 @@ async fn locked_event_hides_all_popups() {
         reminder_tx,
         control_rx,
     );
-    tokio::spawn(scheduler.run());
+    let state = Arc::new(tokio::sync::Mutex::new(ReminderState::default()));
+    tokio::spawn(scheduler.run(Arc::clone(&state)));
 
     // 先确保 Active（让状态机基准存在）
     stats_tx
@@ -235,7 +238,8 @@ async fn dismiss_soft_eye_drop_updates_state() {
         reminder_tx,
         control_rx,
     );
-    tokio::spawn(scheduler.run());
+    let state = Arc::new(tokio::sync::Mutex::new(ReminderState::default()));
+    tokio::spawn(scheduler.run(Arc::clone(&state)));
 
     // 喂 Active tick，触发一次 eye drop 周期不容易（依赖 tick 节拍 + work hour + interval），
     // 直接用 SchedulerControl 测试强提醒 + dismiss_soft 路径
