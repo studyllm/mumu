@@ -4,7 +4,7 @@
 
 **发布日期**：2026-07-23（v0.1.0，含 T36-T38 修复）
 **许可协议**：MIT
-**下载**：下方 Assets 中的 `沐目_0.1.0_x64-setup.exe`
+**下载**：下方 Assets 中的 `mumu_0.1.0_x64-setup.exe`
 
 ---
 
@@ -45,7 +45,7 @@
 
 ## 安装
 
-1. 下载下方 `沐目_0.1.0_x64-setup.exe`（2.85 MB）
+1. 下载下方 `mumu_0.1.0_x64-setup.exe`（2.85 MB）
 2. 双击运行安装包
 3. 选择安装目录（默认 `%LOCALAPPDATA%\沐目`）
 4. 安装完成后**自动启动**，系统托盘出现薄荷绿眼睛图标
@@ -84,12 +84,12 @@
 
 ```powershell
 # Windows PowerShell
-Get-FileHash "沐目_0.1.0_x64-setup.exe" -Algorithm SHA256
+Get-FileHash "mumu_0.1.0_x64-setup.exe" -Algorithm SHA256
 ```
 
 预期 SHA256：
 ```
-1E23B1B878327CE8E17614FFCE3C35514D13780D9D4905FF57390C0052A39CCC
+2C8F6C16BDD072F1EB934A575E1A955C9E4A41007DBC7605B08258ACF1CAA628
 ```
 
 如果哈希不一致，说明下载损坏，请重新下载或检查网络。
